@@ -5,7 +5,7 @@ library(RColorBrewer)
 library(here)
 library(heatmaply)
 
-set.seed(1) # ? 
+set.seed(1) # ?
 
 # 📂 Load data
 loaded_data <- read_csv2(here("data", "onGoingWork_Tableau_recap_fluidigm_noRef_GenoStade.csv"))
