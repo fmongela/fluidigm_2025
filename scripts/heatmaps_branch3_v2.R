@@ -5,39 +5,32 @@ library(RColorBrewer)
 library(here)
 library(heatmaply)
 
-set.seed(1) # ?
-
 # 📂 Load data
 loaded_data <- read_csv2(here("data", "onGoingWork_Tableau_recap_fluidigm_noRef_GenoStade.csv"))
 
 
 # 🧮 Build a matrix that keeps all 3 mice per geno_stade
+# rem : pretreatement to m  ke unique names for each geno_stade
 geno_labels <- make.unique(as.character(loaded_data$Geno_Stade))
-
 matrix_expr_3_mice <- loaded_data[, !(names(loaded_data) %in% "Geno_Stade")]
 rownames(matrix_expr_3_mice) <- geno_labels
 matrix_expr_3_mice <- as.matrix(matrix_expr_3_mice)
 matrix_expr_3_mice <- t(matrix_expr_3_mice)
 colnames(matrix_expr_3_mice) <- geno_labels
-matrix_expr_3_mice <- log2(matrix_expr_3_mice)
+matrix_expr_3_mice <- log2(matrix_expr_3_mice) # make it log2
 
-# 🧮 Average replicates by condition
+# 🧮 Build a matrix that averages the 3 mice per geno_stade
+# 🧮  average replicates by condition
 averaged_data <- loaded_data %>%
-  group_by(Geno_Stade) %>% # so to perform operations within each group
-  summarise(across(everything(), mean), .groups = "drop") %>% # Applies the mean function to all columns within each group
-  column_to_rownames("Geno_Stade") %>%
-  as.matrix() %>%
-  t() %>%
-  as_tibble(rownames = "Genes")
+  group_by(Geno_Stade) %>%
+  summarise(across(everything(), mean), .groups = "drop") %>%
+  column_to_rownames("Geno_Stade")  %>%
+   as.matrix() %>%
+   t()
 
-# ✨ Reorder columns according to desired stage/genotype order
-col_order <- c("Genes", "S1_E18.5", "M1_E18.5", "S1_P4", "M1_P4", 
-               "S1_P11", "M1_P11", "S1_P14", "M1_P14", "S1_Adult", "M1_Adult")
-
-ordered_data <- averaged_data[, col_order]
 
 # 📏 Compute fold changes (M1/S1)
-fold_changes <- ordered_data %>%
+fold_changes <- as_tibble(averaged_data,rownames = "Genes") %>%
   transmute(
     Genes,
     E18.5 = M1_E18.5 / S1_E18.5,
@@ -49,9 +42,8 @@ fold_changes <- ordered_data %>%
 
 
 # 🧬 Prepare heatmap matrix
-matrix_expr <- ordered_data %>%
-  column_to_rownames("Genes") %>%
-  as.matrix()
+matrix_expr <- averaged_data
+  
 
 min_value_expr <- min(matrix_expr, na.rm = TRUE)  
 max_value_expr <- max(matrix_expr, na.rm = TRUE)  
@@ -135,9 +127,9 @@ heatmaply(
 heatmaply(
   matrix_expr_3_mice,
   scale = "none",
-  # colors = color_fc,
-  # k_col = 0,   # column clustering
-  k_row = 4,   # row clustering
-  dendrogram = "row",  # both, column, row or none
-  main = "log2(fold-change) heatmap"
+  colors = color_fc,
+  k_col = 5,   # column clustering
+  k_row = 3,   # row clustering
+  dendrogram = "both",  # both, column, row or none
+  main = "Row expression levels, 3 mice / genotype and devPoint"
 )
